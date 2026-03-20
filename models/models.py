@@ -46,6 +46,8 @@ class Facility(Base):
     description = Column("Description", Text)
     is_active = Column("IsActive", Boolean, default=True)
 
+    allowed_roles = Column("AllowedRoles", String(100))
+
     bookings = relationship("Booking", back_populates="facility", cascade="all, delete-orphan")
 
     def __repr__(self):
