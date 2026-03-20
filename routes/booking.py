@@ -16,16 +16,39 @@ def require_login():
 
 @booking_bp.route('/api/facilities', methods=['GET'])
 def get_facilities():
+    user_id = require_login()
+    if not user_id:
+        return jsonify({'error': 'Login required'}), 401
+
     with Session(engine) as db:
+        user = db.query(User).filter_by(user_id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user_role = user.role.value  # "student", "staff", "admin"
+
         facilities = db.query(Facility).filter_by(is_active=True).all()
+
+        # 🔥 ROLE-BASED FILTERING
+        if user_role == "admin":
+            filtered = facilities  # admin sees everything
+        else:
+            filtered = []
+            for f in facilities:
+                if not f.allowed_roles:
+                    continue
+                allowed_roles = [role.strip() for role in f.allowed_roles.split(",")]
+                if user_role in allowed_roles:
+                    filtered.append(f)
+
         return jsonify([{
             'id':          f.facility_id,
             'name':        f.name,
             'type':        f.type,
             'capacity':    f.capacity,
             'description': f.description,
-        } for f in facilities]), 200
-
+        } for f in filtered]), 200
+    
 
 @booking_bp.route('/api/facilities/<int:facility_id>', methods=['GET'])
 def get_facility(facility_id):
@@ -69,7 +92,7 @@ def create_booking():
 
     data        = request.get_json()
     facility_id = data.get('facility_id')
-    start_str   = data.get('start_time')   # "YYYY-MM-DDTHH:MM" or "YYYY-MM-DD HH:MM"
+    start_str   = data.get('start_time')
     end_str     = data.get('end_time')
     purpose     = data.get('purpose', '')
 
@@ -89,9 +112,28 @@ def create_booking():
         return jsonify({'error': 'Cannot book a time in the past'}), 400
 
     with Session(engine) as db:
-        facility = db.query(Facility).filter_by(facility_id=facility_id, is_active=True).first()
+        facility = db.query(Facility).filter_by(
+            facility_id=facility_id,
+            is_active=True
+        ).first()
+
         if not facility:
             return jsonify({'error': 'Facility not found or unavailable'}), 404
+
+        # 🔥 NEW: ROLE-BASED AUTHORIZATION CHECK
+        user = db.query(User).filter_by(user_id=user_id).first()
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        user_role = user.role.value
+
+        if facility.allowed_roles:
+            allowed_roles = [r.strip() for r in facility.allowed_roles.split(",")]
+
+            if user_role not in allowed_roles and user_role != "admin":
+                return jsonify({
+                    'error': 'You are not allowed to book this facility'
+                }), 403
 
         try:
             booking = Booking(
@@ -105,16 +147,19 @@ def create_booking():
             db.add(booking)
             db.commit()
             db.refresh(booking)
-            user = db.query(User).filter_by(user_id=user_id).first()
+
             try:
                 send_booking_confirmation(
-                    user.email, user.username, facility.name,
+                    user.email,
+                    user.username,
+                    facility.name,
                     booking.start_time.strftime('%Y-%m-%d %H:%M'),
                     booking.end_time.strftime('%H:%M'),
                     booking.booking_id
                 )
             except Exception as e:
                 print('Mail error:', e)
+
         except ValueError as e:
             return jsonify({'error': str(e)}), 409
 
