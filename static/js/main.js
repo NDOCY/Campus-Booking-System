@@ -435,12 +435,37 @@ function switchAdminTab(tab, btn){
   document.getElementById('adminBookingsPanel').style.display   = tab==='bookings'   ? '' : 'none';
   const up = document.getElementById('adminUsersPanel');
   const fp = document.getElementById('adminFacilitiesPanel');
-  up.classList.remove('hidden'); fp.classList.remove('hidden');
-  up.style.display      = tab==='users'      ? '' : 'none';
+  const sp = document.getElementById('adminScannerPanel');
+  up.classList.remove('hidden'); fp.classList.remove('hidden'); sp.classList.remove('hidden');
+  up.style.display = tab==='users'      ? '' : 'none';
   fp.style.display = tab==='facilities' ? '' : 'none';
+  sp.style.display = tab==='scanner'    ? '' : 'none';
   if(tab==='bookings')   renderAdminBookings();
   if(tab==='users')      renderUsersTable();
   if(tab==='facilities') renderFacilitiesTable();
+}
+
+function processCheckin(){
+  const id = document.getElementById('scanBookingId').value.trim();
+  const result = document.getElementById('checkinResult');
+  if(!id){ result.style.display='none'; return; }
+  fetch('/api/admin/bookings/'+id+'/checkin', {method:'POST'})
+  .then(r => r.json())
+  .then(function(data){
+    result.style.display = 'block';
+    if(data.error){
+      result.innerHTML = '<div style="background:rgba(155,35,53,.08);border:1px solid rgba(155,35,53,.25);padding:16px 20px;border-radius:2px;color:var(--red)">'+data.error+'</div>';
+    } else {
+      result.innerHTML = '<div style="background:rgba(45,106,79,.08);border:1px solid rgba(45,106,79,.25);padding:20px;border-radius:2px">'+
+        '<div style="font-size:13px;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Check-In Successful</div>'+
+        '<div style="font-size:14px;font-weight:500;margin-bottom:4px">'+data.user+'</div>'+
+        '<div style="font-size:13px;color:var(--muted)">'+data.facility+' &nbsp;|&nbsp; '+data.start_time+' – '+data.end_time+'</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-top:8px">Checked in at '+data.checked_in_at+'</div>'+
+      '</div>';
+      renderAdminBookings();
+    }
+  })
+  .catch(function(){ result.style.display='block'; result.innerHTML='<div style="color:var(--red)">Server error.</div>'; });
 }
 
 function renderAdminDashboard(){

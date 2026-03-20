@@ -1,3 +1,4 @@
+from datetime import datetime
 from utils.email import send_booking_status
 from flask import Blueprint, request, jsonify, session
 from sqlalchemy.orm import Session
@@ -114,6 +115,32 @@ def reject_booking(booking_id):
 
 # ── Manage facilities ─────────────────────────────────────────────────────────
 
+
+@admin_bp.route('/api/admin/bookings/<int:booking_id>/checkin', methods=['POST'])
+def checkin_booking(booking_id):
+    if not require_admin():
+        return jsonify({'error': 'Admin access required'}), 403
+    with Session(engine) as db:
+        booking = db.query(Booking).filter_by(booking_id=booking_id).first()
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+        if booking.status != BookingStatus.approved:
+            return jsonify({'error': 'Only approved bookings can be checked in'}), 400
+        booking.status = BookingStatus.checked_in
+        booking.checked_in_at = datetime.now()
+        db.commit()
+        user     = db.query(User).filter_by(user_id=booking.user_id).first()
+        facility = db.query(Facility).filter_by(facility_id=booking.facility_id).first()
+        return jsonify({
+            'message': 'Checked in successfully',
+            'booking_id': booking.booking_id,
+            'user': user.username,
+            'facility': facility.name,
+            'start_time': booking.start_time.strftime('%Y-%m-%d %H:%M'),
+            'end_time': booking.end_time.strftime('%H:%M'),
+            'checked_in_at': booking.checked_in_at.strftime('%Y-%m-%d %H:%M')
+        }), 200
+
 @admin_bp.route('/api/admin/facilities', methods=['GET'])
 def list_all_facilities():
     if not require_admin():
@@ -129,6 +156,7 @@ def list_all_facilities():
             'description': f.description,
             'is_active':   f.is_active,
         } for f in facilities]), 200
+
 
 
 @admin_bp.route('/api/admin/facilities', methods=['POST'])

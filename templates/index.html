@@ -226,6 +226,7 @@
       <button class="admin-tab active" onclick="switchAdminTab('bookings',this)">Bookings</button>
       <button class="admin-tab" onclick="switchAdminTab('users',this)">Users</button>
       <button class="admin-tab" onclick="switchAdminTab('facilities',this)">Facilities</button>
+      <button class="admin-tab" onclick="switchAdminTab('scanner',this)">QR Scanner</button>
     </div>
 
     <!-- BOOKINGS PANEL -->
@@ -359,6 +360,25 @@
       </table>
     </div>
   </div>
+
+
+    <!-- SCANNER PANEL -->
+    <div id="adminScannerPanel" class="hidden">
+      <div style="margin-top:24px;max-width:480px">
+        <div class="crud-card">
+          <div class="crud-card-header">
+            <h2>QR Code Check-In</h2>
+          </div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:20px">Enter the booking ID from the scanned QR code to check in a user.</p>
+          <div class="form-group">
+            <label>Booking ID</label>
+            <input type="number" id="scanBookingId" placeholder="e.g. 21"/>
+          </div>
+          <button class="submit-btn" style="max-width:160px;padding:12px" onclick="processCheckin()">Check In</button>
+        </div>
+        <div id="checkinResult" style="margin-top:16px;display:none"></div>
+      </div>
+    </div>
 
 <!-- SUCCESS MODAL -->
 <div class="modal-overlay" id="modalOverlay">

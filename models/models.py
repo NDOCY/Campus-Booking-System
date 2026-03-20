@@ -16,6 +16,7 @@ class BookingStatus(enum.Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+    checked_in = "checked_in"
 
 # ----- User Model -----
 class User(Base):
@@ -66,6 +67,7 @@ class Booking(Base):
     status = Column("Status", Enum(BookingStatus), default=BookingStatus.pending)
     purpose = Column("Purpose", Text)
     created_at = Column("CreatedAt", DateTime, server_default=func.now())
+    checked_in_at = Column("CheckedInAt", DateTime, nullable=True)
     approved_by = Column("ApprovedBy", Integer, ForeignKey('user.UserID', ondelete='SET NULL', onupdate='CASCADE'), nullable=True)
 
     facility = relationship("Facility", back_populates="bookings")
